@@ -63,8 +63,26 @@
         StarFormatter : function(row, cell, value, columnDef, dataContext) {
             return (value) ? "<img src='../images/bullet_star.png' align='absmiddle'>" : "";
         },
-
-
+        
+        // Date cell formatter to handle "yy-mm-dd" format (for StandardDateCellEditor)
+        StandardDateCellFormatter: function(row, cell, value, columnDef, dataContext) {
+            if (value == null || value === "") {
+              return "";
+            }
+            value = value.split(/\s+/)[0];
+            
+            if (/^\d{4}(\-|\/|\.)\d{1,2}\1\d{1,2}$/.test(value)) {
+              var thedate = $.datepicker.parseDate("yy-mm-dd", value);
+              return $.datepicker.formatDate(columnDef.DateShowFormat, thedate);
+            } else {
+              return value;
+            }
+        },
+        
+        BelongsToFormatter : function(row, cell, value, columnDef, dataContext) {
+  					return dataContext[columnDef.id][columnDef.optionTextAttribute];
+  			},
+        
         TextCellEditor : function(args) {
             var $input;
             var defaultValue;
@@ -284,6 +302,112 @@
 
             this.init();
         },
+        
+        // Date cell editor which can handle "yy-mm-dd" format
+        StandardDateCellEditor: function(args) {
+            var $input;
+            var defaultValue;
+            var scope = this;
+            var calendarOpen = false;
+            var showFormat = "yy-mm-dd";
+            var sourceFormat = "yy-mm-dd";
+            
+            this.init = function() {
+                if (args.column.DateSourceFormat != undefined) {
+                    sourceFormat = args.column.DateSourceFormat;
+                }
+                if (args.column.DateShowFormat != undefined) {
+                    showFormat = args.column.DateShowFormat;
+                }
+                $input = $("<INPUT type=text class='editor-text' />");
+                $input.appendTo(args.container);
+                $input.focus().select();
+                $input.datepicker({
+                  showOn: "button",
+                  buttonImageOnly: true,
+                  buttonImage: "/assets/calendar.gif",
+                  beforeShow: function() { calendarOpen = true },
+                  onClose: function() { calendarOpen = false },
+                  dateFormat: showFormat
+                });
+                $input.width($input.width() - 18);
+            };
+            
+            this.destroy = function() {
+                $.datepicker.dpDiv.stop(true, true);
+                $input.datepicker("hide");
+                $input.datepicker("destroy");
+                $input.remove();
+            };
+            
+            this.show = function() {
+                if (calendarOpen) {
+                    $.datepicker.dpDiv.stop(true, true).show();
+                }
+            };
+            
+            this.hide = function() {
+                if (calendarOpen) {
+                    $.datepicker.dpDiv.stop(true, true).hide();
+                }
+            };
+            
+            this.position = function(position) {
+                if (!calendarOpen) return;
+                $.datepicker.dpDiv
+                .css("top", position.top + 30)
+                .css("left", position.left);
+            };
+            
+            this.focus = function() {
+                $input.focus();
+            };
+            
+            this.loadValue = function(item) {
+              if (item[args.column.field]) {
+                defaultValue = item[args.column.field].split(/\s+/)[0];
+                if (/^\d{4}(\-|\/|\.)\d{1,2}\1\d{1,2}$/.test(defaultValue)) {
+                  var thedate = $.datepicker.parseDate(sourceFormat, defaultValue);
+                  defaultValue = $.datepicker.formatDate(showFormat, thedate);
+                } else {
+                  defaultValue = null;
+                }
+              } else {
+                defaultValue = null;
+              }
+              $input.val(defaultValue);
+              $input[0].defaultValue = defaultValue;
+              $input.select();
+            };
+            
+            this.serializeValue = function() {
+                var thedate = $.datepicker.parseDate(showFormat, $input.val());
+                return $.datepicker.formatDate(sourceFormat,
+                thedate);
+            };
+            
+            this.applyValue = function(item, state) {
+                item[args.column.field] = state;
+            };
+            
+            this.isValueChanged = function() {
+                return (! ($input.val() == "" && defaultValue == null))
+                && ($input.val() != defaultValue);
+            };
+            
+            this.validate = function() {
+                return {
+                    valid: true,
+                    msg: null
+                };
+            };
+            
+            this.getCell = function(){
+              return $input.parent();
+            };
+            
+            this.init();
+        },
 
         YesNoSelectCellEditor : function(args) {
             var $select;
@@ -337,7 +461,7 @@
             var scope = this;
 
             this.init = function() {
-                $select = $("<INPUT type=checkbox value='true' class='editor-checkbox' hideFocus>");
+                $select = $("<INPUT type=checkbox class='editor-checkbox' hideFocus>");
                 $select.appendTo(args.container);
                 $select.focus();
             };
@@ -352,14 +476,15 @@
 
             this.loadValue = function(item) {
                 defaultValue = item[args.column.field];
-                if (defaultValue)
-                    $select.attr("checked", "checked");
-                else
-                    $select.removeAttr("checked");
+                if (defaultValue) {
+                  $select.attr("checked", "checked");
+                } else {
+                  $select.removeAttr("checked");
+                }
             };
 
             this.serializeValue = function() {
-                return $select.attr("checked");
+                return $select[0].checked;
             };
 
             this.applyValue = function(item,state) {
@@ -367,7 +492,8 @@
             };
 
             this.isValueChanged = function() {
-                return ($select.attr("checked") != defaultValue);
+                var currentValue = $select[0].checked;
+                return (currentValue != defaultValue);
             };
 
             this.validate = function() {
@@ -633,6 +759,280 @@
             this.getCell = function(){
               return $input.parent();
             };
+
+            this.init();
+        },
+        
+        
+        // The editor which use jquery.chosen to allow you inputting multiple values that belongs to a record
+        BelongsToEditor : function(args) {
+  				var $select;
+  				var choices = args.column.choices;
+  				var optionTextAttribute = args.column.optionTextAttribute || 'name';
+  				var defaultValue;
+  				var boxWidth = 200;
+  				var offsetWith = boxWidth + 28;
+
+  				this.init = function() {
+  				  $wrapper = $("<DIV style='z-index:10000;position:absolute;background:white;padding:3px;margin:-3px 0 0 -7px;border:3px solid gray; -moz-border-radius:10px; border-radius:10px;'/>")
+                .appendTo(args.container);
+  				  if (args.column.type === 'has_and_belongs_to_many') {
+  				    $select = $("<select class='chzn-select' multiple style='width:" + boxWidth + "px'></select>");
+  				  } else {
+  				    $select = $("<select class='chzn-select' style='width:" + boxWidth + "px'></select>");
+  				  }
+            $select.appendTo($wrapper);
+            $select.focus();
+            var winWith = $(window).width(),
+            offsetLeft = $wrapper.offset().left;
+            if(winWith - offsetLeft < offsetWith)
+              $wrapper.offset({left: winWith - offsetWith})
+              
+  					var options = "";
+  					$.each(choices, function() {
+  						options += "<option value='"+this.id+"'>"+this[optionTextAttribute]+"</option>";
+  					});
+  					$select.html(options);
+
+  					// FIXME
+  					// Fix keyboard enter bug stupidly, find a better way please.
+            setTimeout(function(){
+                        $(".grid_container .chzn-drop").css('left', '0');
+                        }, 100);
+  				};
+
+  				this.destroy = function() {
+  		        // remove all data, events & dom elements created in the constructor
+              $select.remove();
+  		    };
+
+  		    this.focus = function() {
+  		        // set the focus on the main input control (if any)
+              $select.focus();
+  		    };
+
+  		    this.isValueChanged = function() {
+  		        // return true if the value(s) being edited by the user has/have been changed
+  						return ($select.val() != defaultValue);
+  		    };
+
+  		    this.serializeValue = function() {
+  		        // return the value(s) being edited by the user in a serialized form
+  		        // can be an arbitrary object
+  		        // the only restriction is that it must be a simple object that can be passed around even
+  		        // when the editor itself has been destroyed
+  						var obj = {id: $select.val()};
+  						if (args.column.type === 'has_and_belongs_to_many') {
+    				    obj[optionTextAttribute] = $.map($('option:selected', $select), function(n){
+                  return $(n).text();
+                }).join();
+    				  } else {
+    				    obj[optionTextAttribute] = $('option:selected', $select).text();
+    				  }
+  		        return obj;
+  		    };
+
+  		    this.loadValue = function(item) {
+  		        // load the value(s) from the data item and update the UI
+  		        // this method will be called immediately after the editor is initialized
+  		        // it may also be called by the grid if if the row/cell being edited is updated via grid.updateRow/updateCell
+              defaultValue = item[args.column.id].id;
+  						$select.val(defaultValue);
+              $select.select();
+  						$select.chosen();
+  						setTimeout(function(){
+                $('.slick-cell .chzn-select~.chzn-container').trigger('mousedown');
+              }, 100);
+              
+  		    };
+
+  		    this.applyValue = function(item,state) {
+  		        // deserialize the value(s) saved to "state" and apply them to the data item
+  		        // this method may get called after the editor itself has been destroyed
+  		        // treat it as an equivalent of a Java/C# "static" method - no instance variables should be accessed
+              
+              item[args.column.id].id = state.id;
+              item[args.column.id][optionTextAttribute] = state[optionTextAttribute];
+  		    };
+
+  		    this.validate = function() {
+  		        // validate user input and return the result along with the validation message, if any
+  		        // if the input is valid, return {valid:true,msg:null}
+              return {
+                  valid: true,
+                  msg: null
+              };
+  		    };
+
+  				this.getCell = function(){
+            return $select.parent();
+          }
+
+  				this.init();
+  			},
+  			
+  			
+        // The editor which use jquery.chosen to allow you choose the value as select
+        SelectEditor : function(args) {
+  				var $select;
+  				var choices = args.column.choices;
+  				var defaultValue;
+  				var boxWidth = 200;
+  				var offsetWith = boxWidth + 28;
+
+  				this.init = function() {
+  				  $wrapper = $("<DIV style='z-index:10000;position:absolute;background:white;padding:3px;margin:-3px 0 0 -7px;border:3px solid gray; -moz-border-radius:10px; border-radius:10px;'/>")
+                .appendTo(args.container);
+				    $select = $("<select class='chzn-select' style='width:" +  boxWidth + "px'></select>")
+				        .appendTo($wrapper);
+            $select.focus();
+            var winWith = $(window).width(),
+            offsetLeft = $wrapper.offset().left;
+            if(winWith - offsetLeft < offsetWith)
+              $wrapper.offset({left: winWith - offsetWith})
+  					var options = "";
+  					$.each(choices, function() {
+  						options += "<option value='"+this.id+"'>" + this.name + "</option>";
+  					});
+  					$select.html(options);  
+
+  					// FIXME
+  					// Fix keyboard enter bug stupidly, find a better way please.
+            setTimeout(function(){
+                        $(".grid_container .chzn-drop").css('left', '0');
+                        }, 100);
+  				};
+
+  				this.destroy = function() {
+              $select.remove();
+  		    };
+
+  		    this.focus = function() {
+              $select.focus();
+  		    };
+
+  		    this.isValueChanged = function() {
+  		        // return true if the value(s) being edited by the user has/have been changed
+  						return ($select.val() != defaultValue);
+  		    };
+
+  		    this.serializeValue = function() {
+  						var obj = {id: $select.val()};
+  				    obj.id = $('option:selected', $select).val();
+  		        return obj;
+  		    };
+
+  		    this.loadValue = function(item) {
+  		        defaultValue = item[args.column.id] ? item[args.column.id].id : null;
+  						$select.val(defaultValue);
+              $select.select();
+  						$select.chosen();
+  						$('.slick-cell .chzn-select~.chzn-container').trigger('mousedown');
+  		    };
+
+  		    this.applyValue = function(item,state) {
+              item[args.column.id] = state.id;
+  		    };
+
+  		    this.validate = function() {
+              return {
+                  valid: true,
+                  msg: null
+              };
+  		    };
+
+  				this.getCell = function(){
+            return $select.parent();
+          }
+
+  				this.init();
+  			},
+
+        DoubleSelectEditor: function(args) {
+            var $from, $to;
+            var scope = this;
+            var originValue = args.item[args.column.field].split('-');
+            var staticValue = originValue[2] + '-' + originValue[3]
+    				var from_choices = args.column.from_choices;
+    				var to_choices = args.column.to_choices;
+    				var from_field = args.column.from_field;
+    				var to_field = args.column.to_field;
+    				var defaultValue;
+    				var boxWidth = 200;
+    				var offsetWith = boxWidth * 2 + 70;
+            this.init = function() {
+
+                $wrapper = $("<DIV style='z-index:10000;position:absolute;background:white;padding:3px;margin:-3px 0 0 -7px;border:3px solid gray; -moz-border-radius:10px; border-radius:10px;'/>")
+                    .appendTo(args.container);
+                  
+                $from = $("<select class='chzn-select' style='width: " + boxWidth + "px;'></select>")
+                            .appendTo($wrapper);
+
+                $wrapper.append("&nbsp; <span>-</span> &nbsp;");
+
+                $to = $("<select class='chzn-select' style='width: " + boxWidth + "px;'></select>")
+                            .appendTo($wrapper);
+                $wrapper.append(' <span>-' + staticValue + '</span>');
+                var from_options = "", to_options = '';
+      					$.each(from_choices, function() {
+      						from_options += "<option value='" + this.id + "' code='" + this.code + "'>" + this.name + "</option>";
+      					});
+      					$.each(to_choices, function() {
+      						to_options += "<option value='" + this.id + "' code='" + this.code + "'>" + this.name + "</option>";
+      					});
+      					$from.html(from_options);
+      					$to.html(to_options);
+                scope.focus();
+                var winWith = $(window).width(),
+                offsetLeft = $wrapper.offset().left;
+                if(winWith - offsetLeft < offsetWith)
+                  $wrapper.offset({left: winWith - offsetWith})
+            };
+
+            this.destroy = function() {
+                $(args.container).empty();
+            };
+
+            this.focus = function() {
+                $from.focus();
+            };
+
+            this.serializeValue = function() {
+                var stateH = {};
+                stateH[from_field + '_value'] = $from.val();
+                stateH[to_field + '_value'] = $to.val();
+                stateH[from_field + '_code'] = $('option:selected', $from).attr('code');
+                stateH[to_field + '_code'] = $('option:selected', $to).attr('code');
+                stateH[from_field + '_text'] = $('option:selected', $from).text();
+                stateH[to_field + '_text'] = $('option:selected', $to).text();
+                return stateH;
+            };
+
+            this.applyValue = function(item,state) {
+                item[from_field] = state[from_field + '_value'];
+                item[to_field] = state[to_field + '_value'];
+                item[args.column.field] = state[from_field + '_code'] + '-' + state[to_field + '_code'] + '-' + staticValue;
+            };
+
+            this.loadValue = function(item) {
+                defaultValue = item[args.column.field].split('-');
+                $('option[code="' + defaultValue[0] + '"]', $from).attr("selected","selected");
+                $('option[code="' + defaultValue[1] + '"]', $to).attr("selected","selected");
+                $to.chosen();
+                $from.chosen();
+            };
+
+            this.isValueChanged = function() {
+                return args.item.from != $from.val() || args.item.to != $to.val();
+            };
+
+            this.validate = function() {
+                return {valid: true, msg: null};
+            };
+            
+            this.getCell = function(){
+              return $from.parent();
+            }
 
             this.init();
         }
