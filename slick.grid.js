@@ -2975,8 +2975,28 @@ if (typeof Slick === "undefined") {
             }
             selectionModel.setSelectedRanges(rowsToRanges(rows));
         }
-
-
+        
+        // ----------------------- customized methods for convenience ------------------------
+        function getRows() {
+          return rowsCache;
+        }
+      
+        function getRowAt(i){
+          return rowsCache[i];
+        }
+        
+        function isEditing(){
+          return currentEditor != null;
+        }
+        
+        // Get row by record.id
+        function getRowByRecordId(id){
+          var data = getData();
+  			  for(var i in data) {
+  			    if (data.hasOwnProperty(i) && i !== 'length' && data[i].id == id) { return getRowAt(i); };
+  			  }
+        }
+        
         //////////////////////////////////////////////////////////////////////////////////////////////
         // Debug
 
@@ -3106,7 +3126,13 @@ if (typeof Slick === "undefined") {
 
             // IEditor implementation
             "getEditorLock":                getEditorLock,
-            "getEditController":            getEditController
+            "getEditController":            getEditController,
+            
+            // Customized APIs
+            "getRows":                      getRows,
+            "getRowAt":                     getRowAt,
+            "isEditing":                    isEditing,
+            "getRowByRecordId":             getRowByRecordId
         });
 
         init();
