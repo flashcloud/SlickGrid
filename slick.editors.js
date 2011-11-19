@@ -129,7 +129,11 @@
                     msg: null
                 };
             };
-
+            
+            this.getCell = function(){
+              return $input.parent();
+            };
+            
             this.init();
         },
 
@@ -189,6 +193,10 @@
                     valid: true,
                     msg: null
                 };
+            };
+            
+            this.getCell = function(){
+              return $input.parent();
             };
 
             this.init();
@@ -268,6 +276,10 @@
                     valid: true,
                     msg: null
                 };
+            };
+            
+            this.getCell = function(){
+              return $input.parent();
             };
 
             this.init();
@@ -364,6 +376,10 @@
                     msg: null
                 };
             };
+            
+            this.getCell = function(){
+              return $select.parent();
+            };
 
             this.init();
         },
@@ -438,6 +454,10 @@
                     msg: null
                 };
             };
+            
+            this.getCell = function(){
+              return $input.parent();
+            };
 
             this.init();
         },
@@ -498,6 +518,10 @@
                     valid: true,
                     msg: null
                 };
+            };
+            
+            this.getCell = function(){
+              return $input.parent();
             };
 
             this.init();
@@ -604,6 +628,10 @@
                     valid: true,
                     msg: null
                 };
+            };
+            
+            this.getCell = function(){
+              return $input.parent();
             };
 
             this.init();

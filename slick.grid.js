@@ -2203,6 +2203,13 @@ if (typeof Slick === "undefined") {
 
         function getCellFromEvent(e) {
             var $cell = $(e.target).closest(".slick-cell", $canvas);
+            
+            // get cell of current editor even if you are not clicking on the grid row (anywhere on the viewport)
+            if($cell.length == 0 && currentEditor != null && $.isFunction(currentEditor.getCell)) {
+              var currentEditorCell = currentEditor.getCell();
+              $cell = $(currentEditorCell.next()[0] || currentEditorCell.prev()[0]);
+            }
+            
             if (!$cell.length)
                 return null;
 
