@@ -1035,6 +1035,141 @@
             }
 
             this.init();
+        },
+
+        /**
+         *
+         * @param args.column.editorOptions:
+         *      source: autocomplete's source opotion
+         */
+        AutoCompleteCellEditor:function (args) {
+            var $input;
+            var scope = this;
+            var autocompleteActive = false;
+            var editorContext;
+
+            var $container = $(args.container);
+
+            this.init = function () {
+                $input = $("<INPUT type=text class='editor-text' />");
+
+                $input.bind("keydown.nav", function(e) {
+                    if (e.keyCode === $.ui.keyCode.LEFT || e.keyCode === $.ui.keyCode.RIGHT || (isListOpen && (e.keyCode === $.ui.keyCode.UP || e.keyCode === $.ui.keyCode.DOWN))) {
+                        e.stopPropagation();
+                    }
+                });
+
+                var isListOpen = false;
+                $input.autocomplete({
+                    source: args.column.editorOptions.source, //"http://jqueryui.com/demos/autocomplete/search.php",
+                    minLength: 2,
+                    select: function( event, ui ) {
+                        console.log(ui.item.value);
+                        $input.val(ui.item.value);
+                    },
+                    open: function(event, ui) {
+                        isListOpen = true;
+
+                        // Fine-tune the style drop-down list
+                        var $list = $('.ui-autocomplete');
+                        var border = 0;
+                        if($.browser.mozilla)
+                            border = 1;
+                        $list.css({
+                            'width':  parseInt($input.css('width')) + parseInt($container.css('padding-right')) - border + 'px',
+                            'left': (parseInt($list.css('left')) - parseInt($container.css('padding-left'))) - 1 + 'px',
+                            'top': (parseInt($list.css('top')) + parseInt($container.css('padding-bottom'))) + 'px'
+                        })
+                        .removeClass('ui-corner-all').addClass('ui-corner-bottom');
+                    },
+                    close: function(event, ui) { isListOpen = false }
+                });
+                $input.appendTo(args.container);
+                $input.focus().select();
+            };
+            this.destroy = function () {
+                $input.remove();
+            };
+            this.focus = function () {
+                $input.focus();
+            };
+            this.setValue = function (value) {
+                $input.val(value);
+                defaultValue = value;
+            };
+            this.getValue = function () {
+                return $input.val();
+            };
+
+            this.loadValue = function(item) {
+                defaultValue = item[args.column.field] || "";
+                $input.val(defaultValue);
+                $input[0].defaultValue = defaultValue;
+                $input.select();
+            };
+
+            this.serializeValue = function() {
+                return $input.val();
+            };
+
+            this.applyValue = function(item,state) {
+                item[args.column.field] = state;
+            };
+
+            this.isValueChanged = function () {
+                return (!($input.val() == "" && defaultValue == null)) && ($input.val() != defaultValue);
+            };
+            this.validate = function () {
+                if (args.column.validator) {
+                    var validationResults = args.column.validator(scope.getValue());
+                    if (!validationResults.valid) return validationResults;
+                }
+                return {
+                    valid:true,
+                    msg:null
+                };
+            };
+            this.handleKeyDown = function (e) {
+                switch (e.which) {
+                    case 9:
+                    // tab
+                    case 13:
+                    // enter
+                    case 27:
+                        /* esc */
+                        autocompleteActive = false;
+                        $input.setOptions({
+                            ignoreKeydownEvents:true
+                        });
+                        $input.blur();
+                        return false;
+                    case 37:
+                    // left
+                    case 39:
+                    // right
+                    case 38:
+                    // up
+                    case 40:
+                        // down
+                        return autocompleteActive;
+                    case 113:
+                        // F2
+                        autocompleteActive = true;
+                        $input.setOptions({
+                            ignoreKeydownEvents:false
+                        });
+                        $input.caret(9999, 9999);
+                        return true;
+                    default:
+                        autocompleteActive = true;
+                        $input.setOptions({
+                            ignoreKeydownEvents:false
+                        });
+                        return true;
+                }
+            };
+
+            this.init();
         }
 
     };
