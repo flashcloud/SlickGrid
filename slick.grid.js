@@ -67,6 +67,7 @@ if (typeof Slick === "undefined") {
             leaveSpaceForNewRows: false,
             editable: false,
             autoEdit: true,
+            horizontalEdit: false,
             enableCellNavigation: true,
             enableCellRangeSelection: false,
             enableColumnReorder: true,
@@ -2450,7 +2451,10 @@ if (typeof Slick === "undefined") {
                   setFocus();
 
                 if (options.autoEdit) {
-                    navigateDown();
+                    if (options.horizontalEdit === true)
+                        navigateRight();
+                    else
+                        navigateDown();
                 }
             }
         }
