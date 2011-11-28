@@ -390,7 +390,7 @@
                 $input.datepicker({
                   showOn: "button",
                   buttonImageOnly: true,
-                  buttonImage: "/assets/calendar.gif",
+                  buttonImage: "../images/calendar.gif",
                   beforeShow: function() { calendarOpen = true },
                   onClose: function() { calendarOpen = false },
                   dateFormat: showFormat
@@ -737,7 +737,7 @@
                 $input = $("<TEXTAREA hidefocus rows=5 style='backround:white;width:250px;height:80px;border:0;outline:0'>")
                     .appendTo($wrapper);
 
-                $("<DIV style='text-align:right'><BUTTON>Save</BUTTON><BUTTON>Cancel</BUTTON></DIV>")
+                $("<DIV style='text-align:right'><BUTTON>确认</BUTTON><BUTTON>取消</BUTTON></DIV>")
                     .appendTo($wrapper);
 
                 $wrapper.find("button:first").bind("click", this.save);
@@ -938,7 +938,7 @@
   			
   			
         // The editor which use jquery.chosen to allow you choose the value as select
-        SelectEditor : function(args) {
+        ChosenEditor : function(args) {
   				var $select;
   				var choices = args.column.choices;
   				var defaultValue;
@@ -1097,7 +1097,7 @@
             
             this.getCell = function(){
               return $from.parent();
-            }
+            };
 
             this.init();
         },
@@ -1106,15 +1106,23 @@
          *
          * @param args.column.editorOptions:
          *      source: autocomplete's source opotion
+         *      type: 'ajax' or 'array'
+         *      postData:{termField}
+         *      selectedIdField:   selected value will be store grid column field name (grid data item object property name)
          */
         AutoCompleteCellEditor:function (args) {
             var $input;
+            var defaultValue;
             var scope = this;
             var autocompleteActive = false;
-            var editorContext;
+            var selDropdownItem;
+            var gridItem = args.item;
+
+
 
             if (!args.column.editorOptions)
                 throw  'must define editorOptions property in column config';
+            var editorOptions = args.column.editorOptions;
 
             var $container = $(args.container);
 
@@ -1127,13 +1135,38 @@
                     }
                 });
 
+                var  autoSource;
+                if (editorOptions.type == 'ajax') {
+                    autoSource = function( request, response ) {
+                        $.ajax({
+                            type:'POST',
+                            url: editorOptions.source,
+                            data: {
+                                termField: editorOptions.postData ? editorOptions.postData.termField : '',
+                                term: request.term
+                            },
+                            success: function( data ) {
+                                response( $.map( data, function( item ) {
+                                    return {
+                                        id:item.id,
+                                        label: item.label,
+                                        value: item.value,
+                                        fullData: item.fullData
+                                    }
+                                }));
+                            }
+                        });
+                    };
+                }  else
+                    autoSource = editorOptions.source;
+
                 var isListOpen = false;
                 $input.autocomplete({
-                    source: args.column.editorOptions.source, //"http://jqueryui.com/demos/autocomplete/search.php",
-                    minLength: 2,
+                    source: autoSource,
+                    minLength: 1,
                     select: function( event, ui ) {
-                        console.log(ui.item.value);
                         $input.val(ui.item.value);
+                        selDropdownItem = ui.item;
                     },
                     open: function(event, ui) {
                         isListOpen = true;
@@ -1144,9 +1177,9 @@
                         if($.browser.mozilla)
                             border = 1;
                         $list.css({
-                            'width':  parseInt($input.css('width')) + parseInt($container.css('padding-right')) - border + 'px',
-                            'left': (parseInt($list.css('left')) - parseInt($container.css('padding-left'))) - 1 + 'px',
-                            'top': (parseInt($list.css('top')) + parseInt($container.css('padding-bottom'))) + 'px'
+                            'width': ( args.column.editorOptions.width ? args.column.editorOptions.width : parseInt($input.css('width')) + parseInt($container.css('padding-right')) - border) + 'px',
+                            'left': args.position.left + 1 + 'px',
+                            'top': args.position.bottom + 'px'
                         })
                         .removeClass('ui-corner-all').addClass('ui-corner-bottom');
                     },
@@ -1181,7 +1214,14 @@
             };
 
             this.applyValue = function(item,state) {
-                item[args.column.field] = state;
+                if (selDropdownItem) {
+                    item[args.column.field] = state;
+
+                    if (editorOptions.selectedIdField && item[editorOptions.selectedIdField] !== undefined)
+                        item[editorOptions.selectedIdField] = selDropdownItem.id;
+
+                    $.isFunction(args.column.editorOptions.onSelectItem) && args.column.editorOptions.onSelectItem(item, selDropdownItem.fullData);
+                }
             };
 
             this.isValueChanged = function () {
@@ -1192,11 +1232,19 @@
                     var validationResults = args.column.validator(scope.getValue());
                     if (!validationResults.valid) return validationResults;
                 }
+
+                if (editorOptions.selectedIdField && gridItem[editorOptions.selectedIdField] == undefined && (selDropdownItem == null || selDropdownItem === undefined)){
+                    return {
+                        valid:false,
+                        msg:'please select one!'
+                    };
+                }
                 return {
                     valid:true,
                     msg:null
                 };
             };
+
             this.handleKeyDown = function (e) {
                 switch (e.which) {
                     case 9:
@@ -1235,6 +1283,10 @@
                         });
                         return true;
                 }
+            };
+
+            this.getCell = function(){
+                return $input.parent();
             };
 
             this.init();
