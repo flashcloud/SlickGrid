@@ -189,7 +189,7 @@
             };
 
             this.serializeValue = function() {
-                return parseInt($input.val(),10) || 0;
+                return parseFloat($input.val()) || 0.00;
             };
 
             this.applyValue = function(item,state) {
@@ -1287,6 +1287,99 @@
 
             this.getCell = function(){
                 return $input.parent();
+            };
+
+            this.init();
+        },
+
+        /**
+         *  Normal Select Cell Editor, and each row has diffrent select options
+         *  diffent options defined in data[i].selectOptions[fieldName][j].label  and  data[i].selectOptions[fieldName][j].value
+         *  the selected option value store to data[i].[fieldName+'id'] if this [fieldName+'id'] item is exists.
+         * @param args
+         */
+        DiffentOptionsSelectCellEditor:function (args) {
+            var $select;
+            var defaultValue;
+            var scope = this;
+            var gridItem = args.item;
+
+            var selectValueProp = null;
+
+            this.init = function () {
+
+                if (!gridItem.selectOptions || gridItem.selectOptions[args.column.field] === undefined){
+                    //'must define Select options property in data[i].selectOptions[fieldName].label  and  data[i].selectOptions[fieldName].value';
+                    return;
+                }
+
+                var option_str = '';
+                selectValueProp = gridItem[args.column.field + 'Id'] !== undefined && (args.column.field + 'Id') ||
+                    gridItem[args.column.field + 'iD'] !== undefined && (args.column.field + 'iD') ||
+                    gridItem[args.column.field + 'ID'] !== undefined && (args.column.field + 'ID') ||
+                    gridItem[args.column.field + 'id'] !== undefined && (args.column.field + 'id') || null;
+
+                var selectOptions = gridItem.selectOptions[args.column.field];
+                for (var i = 0; i < selectOptions.length; i++) {
+                    var selItem = selectOptions[i];
+                    var opt_label = selItem.label;
+                    var opt_value = selItem.value;
+                    option_str += "<OPTION value='" + opt_value + "'>" + opt_label + "</OPTION>";
+                }
+                $select = $("<SELECT tabIndex='0' class='editor-select'>" + option_str + "</SELECT>");
+                $select.appendTo(args.container);
+
+                if (args.column.editorOptions !== undefined && $.isFunction(args.column.editorOptions.onSelectItem)) {
+                    $select.change(function() {
+                        var selIndex = $select.get(0).selectedIndex;
+                        args.column.editorOptions.onSelectItem(gridItem, selIndex);
+                    });
+                }
+
+                $select.focus();
+            };
+
+            this.destroy = function () {
+                $select && $select.remove();
+            };
+
+            this.focus = function () {
+                $select && $select.focus();
+            };
+
+            this.loadValue = function (item) {
+                if(selectValueProp)
+                    defaultValue = gridItem[selectValueProp];
+                else
+                    defaultValue = item[args.column.field];
+                $select && $select.val(defaultValue);
+            };
+
+            this.serializeValue = function () {
+                if (!$select)  return;
+
+                if(selectValueProp)
+                    gridItem[selectValueProp] = $select.val();
+                return $('option:selected', $select).text();
+            };
+
+            this.applyValue = function (item, state) {
+                $select && (item[args.column.field] = state);
+            };
+
+            this.isValueChanged = function () {
+                return $select && ($select.val() != defaultValue);
+            };
+
+            this.validate = function () {
+                return {
+                    valid:true,
+                    msg:null
+                };
+            };
+
+            this.getCell = function(){
+              return $select.parent();
             };
 
             this.init();
