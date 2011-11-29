@@ -2085,7 +2085,7 @@ if (typeof Slick === "undefined") {
                                 // adding new row
                                 if (activeRow === getDataLength()) {
                                     if (options.horizontalEdit)
-                                        navigateRight();
+                                        navigateNextEditable();
                                     else
                                         navigateDown();
                                 } 
@@ -2454,8 +2454,8 @@ if (typeof Slick === "undefined") {
                   setFocus();
 
                 if (options.autoEdit) {
-                    if (options.horizontalEdit === true)
-                        navigateRight();
+                    if (options.horizontalEdit)
+                        navigateNextEditable();
                     else
                         navigateDown();
                 }
@@ -2740,6 +2740,24 @@ if (typeof Slick === "undefined") {
 
         function navigateRight() {
             navigate("right");
+        }
+
+        function navigateNextEditable() {
+            var oriActiveCell = getActiveCell();
+            var oriCell = oriActiveCell.cell;
+
+            // find in the same row
+            do {
+                navigate("right");
+            } while(getActiveCell() && getColumns()[getActiveCell().cell].editor === undefined);
+
+            // If the active cell is the current row of the last editable cell, and then continue to the next line to find the first editable cell
+            if (getActiveCell() && oriCell == getActiveCell().cell) {
+                navigateNext();
+                do {
+                    navigate("right");
+                } while(getActiveCell() && getColumns()[getActiveCell().cell].editor === undefined);
+            }
         }
 
         function navigateLeft() {
