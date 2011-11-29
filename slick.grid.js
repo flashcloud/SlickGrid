@@ -2743,20 +2743,44 @@ if (typeof Slick === "undefined") {
         }
 
         function navigateNextEditable() {
-            var oriActiveCell = getActiveCell();
-            var oriCell = oriActiveCell.cell;
 
-            // find in the same row
-            do {
-                navigate("right");
-            } while(getActiveCell() && getColumns()[getActiveCell().cell].editor === undefined);
+            var editorColCount = 0;
+            for (var _i = 0; _i < getColumns().length; _i++) {
+                if (getColumns()[_i].editor !== undefined) {
+                    editorColCount += 1;
+                }
+            }
+            if (editorColCount == 1) {
+                navigateDown();
+                return;
+            }
 
-            // If the active cell is the current row of the last editable cell, and then continue to the next line to find the first editable cell
-            if (getActiveCell() && oriCell == getActiveCell().cell) {
-                navigateNext();
-                do {
-                    navigate("right");
-                } while(getActiveCell() && getColumns()[getActiveCell().cell].editor === undefined);
+            var activeCell = getActiveCell();
+            var row = activeCell.row;
+            var nextRow = false;
+            if (activeCell) {
+                var j = 0;
+                if (activeCell.cell == getColumns().length - 1){
+                    row += 1;
+                }
+                else
+                    j = activeCell.cell + 1;
+                for (var i = j; i < getColumns().length; i++) {
+                    var col = getColumns()[i];
+                    if (col.editor !== undefined) {
+                        if (options.enableAddRow && row == getDataLength() + 1)
+                            navigateNext();
+                        gotoCell(row, i, options.editable);
+                        return;
+                    }
+
+                    if (i == getColumns().length - 1){
+                        i = -1;
+                        j = 0;
+                        row += 1;
+                        nextRow = true;
+                    }
+                }
             }
         }
 
