@@ -2084,7 +2084,10 @@ if (typeof Slick === "undefined") {
                                 var chosenFull = $('.slick-cell .chzn-select~.chzn-container-multi .chzn-results li.active-result').size() == 0;
                                 // adding new row
                                 if (activeRow === getDataLength()) {
-                                    navigateDown();
+                                    if (options.horizontalEdit)
+                                        navigateRight();
+                                    else
+                                        navigateDown();
                                 } 
                                 else if (!multiChosenExist || chosenFull) {
                                     setTimeout(function(){
