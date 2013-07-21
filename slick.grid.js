@@ -2246,6 +2246,7 @@ if (typeof Slick === "undefined") {
                 return;
             }
 
+            var newRowCount = getDataLength() + (options.enableAddRow?1:0) + (options.leaveSpaceForNewRows?numVisibleRows-1:0);
             var oldH = ( hasFrozenRows && !options.frozenBottom ) ? $canvasBottomL.height() : $canvasTopL.height();
 
             if ( hasFrozenRows && options.frozenBottom ) {
