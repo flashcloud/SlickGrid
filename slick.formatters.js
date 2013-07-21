@@ -12,7 +12,9 @@
         "PercentComplete": PercentCompleteFormatter,
         "PercentCompleteBar": PercentCompleteBarFormatter,
         "YesNo": YesNoFormatter,
-        "Checkmark": CheckmarkFormatter
+        "Checkmark": CheckmarkFormatter,
+        "Selector": SelectorFormatter,
+        "Star": StarFormatter
       }
     }
   });
@@ -51,5 +53,14 @@
 
   function CheckmarkFormatter(row, cell, value, columnDef, dataContext) {
     return value ? "<img src='../images/tick.png'>" : "";
+  }
+
+  function SelectorFormatter(row, cell, value, columnDef, dataContext) {
+    return (!dataContext ? "" : row);
+  }
+
+  //for jQuery Star Plugin
+  function StarFormatter(row, cell, value, columnDef, dataContext) {
+    return (value) ? "<img src='../images/bullet_star.png' align='absmiddle'>" : "";
   }
 })(jQuery);
