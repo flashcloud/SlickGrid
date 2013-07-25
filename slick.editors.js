@@ -854,13 +854,26 @@
       var autoSource;
       if (editorOptions.type == 'ajax') {
         autoSource = function (request, response) {
+          var postData = {};
+          if (editorOptions.postData) {
+            $.extend(postData, {termField: editorOptions.postData.termField});
+            if (editorOptions.postData.extend) {
+              //editorOptions.postData.extend对象的键是slickGrid.dataView的item键, 值用现有的dataView的item的值替换
+              for (var itemKey in editorOptions.postData.extend) {
+                var value = gridItem[itemKey];
+                editorOptions.postData.extend[itemKey] = value;
+              }
+              $.extend(postData, editorOptions.postData.extend);
+            }
+            if (editorOptions.postData.others) {
+              //editorOptions.postData.others对象包含一些其他额外由服务器构造并返回的数据
+              $.extend(postData, editorOptions.postData.others);
+            }
+          }
           $.ajax({
             type: 'POST',
             url: editorOptions.source,
-            data: {
-              termField: editorOptions.postData ? editorOptions.postData.termField : '',
-              term: request.term
-            },
+            data: $.extend(postData, {term: request.term}),
             success: function (data) {
               response($.map(data, function (item) {
                 return {
@@ -880,6 +893,7 @@
       $input.autocomplete({
         source: autoSource,
         minLength: 1,
+        autoFocus: true,
         select: function (event, ui) {
           $input.val(ui.item.value);
           selDropdownItem = ui.item;
